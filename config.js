@@ -2,13 +2,13 @@ export const CONFIG = {
 
   VERSION: "1",
   
-  NOMBRE_EMPRESA: "Frankos Chicken",
+  NOMBRE_EMPRESA: "San José y El Redentor",
   WHATSAPP_NUMERO: "51949973277",
-  COLOR_PRIMARIO: "#ea580c",
+  COLOR_PRIMARIO: "#000000",
   ICONO_HEADER: "FC",
   FAVICON_EMOJI: "🐔",
-  LOGO_URL: "https://i.ibb.co/W4m7vxxn/logo-frankos-chicken.jpg",
-  SALUDO_INICIAL: "¡Hola! Bienvenido a Frankos Chicken. ¿En qué puedo ayudarte hoy?",
+  LOGO_URL: "https://sjr.edu.pe/wp-content/uploads/2019/11/logo-insignia-sjr.png",
+  SALUDO_INICIAL: "¡Hola! Bienvenido al colegio San José y El Redentor. ¿En qué puedo ayudarte hoy?",
   PLACEHOLDER_INPUT: "Escribe tu consulta...",
   
   URL_PROXY: "https://deepseek-chat-proxy.precios-com-pe.workers.dev",
