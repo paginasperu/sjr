@@ -3,60 +3,41 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Cargando Chat...</title>
+    <title>Chat</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    
     <style>
-        :root { --chat-color: #000000; }
-        
-        html, body {
-            height: 100%;
-            margin: 0;
-            overflow: hidden;
-            background-color: #f3f4f6;
-        }
-
-        .app-container {
-            height: 100dvh;
-            display: flex;
-            flex-direction: column;
-        }
-
-        #userInput { font-size: 16px !important; }
-        
-        /* Scrollbar interna */
+        :root { --chat-color: #333; }
+        html, body { height: 100%; margin: 0; overflow: hidden; background-color: #f3f4f6; }
+        .app-container { height: 100dvh; display: flex; flex-direction: column; }
         #chat-container::-webkit-scrollbar { width: 4px; }
         #chat-container::-webkit-scrollbar-thumb { background: #e5e7eb; border-radius: 10px; }
-        
-        /* Animación de carga */
         .typing-dot { width: 6px; height: 6px; background: #9ca3af; border-radius: 50%; animation: typing 1.4s infinite ease-in-out; }
         @keyframes typing { 0%, 80%, 100% { transform: scale(0.6); opacity: 0.4; } 40% { transform: scale(1.2); opacity: 1; } }
-        
-        /* Estilos Markdown básicos para la respuesta del bot */
-        .bot-bubble ul { list-style-type: disc; margin-left: 1.5em; }
-        .bot-bubble ol { list-style-type: decimal; margin-left: 1.5em; }
-        .bot-bubble p { margin-bottom: 0.5em; }
-        .bot-bubble p:last-child { margin-bottom: 0; }
-        .bot-bubble a { color: var(--chat-color); text-decoration: underline; font-weight: bold; }
+        /* Estilos markdown básicos */
+        .bot-content ul { list-style-type: disc; margin-left: 1.2rem; }
+        .bot-content ol { list-style-type: decimal; margin-left: 1.2rem; }
+        .bot-content strong { color: var(--chat-color); }
+        .bot-content a { color: var(--chat-color); text-decoration: underline; }
     </style>
 </head>
 <body>
     <div class="app-container max-w-2xl mx-auto w-full bg-white shadow-2xl">
-        <header id="main-header" class="p-4 flex items-center gap-3 border-b text-white shrink-0" style="background-color: var(--chat-color)">
-            <div id="header-icon-initials" class="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center font-bold overflow-hidden shrink-0"></div>
-            <h1 id="header-title" class="font-bold text-lg tracking-tight"></h1>
+        <header class="p-4 flex items-center gap-3 border-b text-white shrink-0" style="background-color: var(--chat-color)">
+            <div id="header-icon" class="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center font-bold overflow-hidden shrink-0"></div>
+            <h1 id="header-title" class="font-bold text-lg tracking-tight">Cargando...</h1>
         </header>
 
         <div id="chat-container" class="flex-1 overflow-y-auto p-4 space-y-4 bg-gray-50 flex flex-col">
-            <div id="bot-welcome-bubble" class="p-3 max-w-[85%] text-sm bg-white border border-gray-200 rounded-2xl rounded-tl-none self-start shadow-sm">
-                <p id="bot-welcome-text">Iniciando chat...</p>
+            <div class="p-3 max-w-[85%] text-sm bg-white border border-gray-200 rounded-2xl rounded-tl-none self-start shadow-sm">
+                <p id="bot-welcome-text">...</p>
             </div>
         </div>
 
         <footer class="p-4 border-t bg-white shrink-0 pb-[max(1rem,env(safe-area-inset-bottom))]">
+            <div id="feedback-limit-text" class="text-[10px] uppercase font-bold mb-2 text-center h-4 tracking-widest" style="color: var(--chat-color)"></div>
             <div class="flex gap-2 items-center">
-                <input type="text" id="userInput" class="flex-1 border border-gray-300 rounded-full px-4 py-2.5 text-sm focus:outline-none" disabled autocomplete="off">
-                <button id="sendBtn" class="text-white rounded-full p-2.5 disabled:opacity-40" style="background-color: var(--chat-color)" disabled>
+                <input type="text" id="userInput" class="flex-1 border border-gray-300 rounded-full px-4 py-2.5 text-sm focus:outline-none focus:border-gray-400 transition-colors" disabled>
+                <button id="sendBtn" class="text-white rounded-full p-2.5 disabled:opacity-50 transition-opacity" style="background-color: var(--chat-color)" disabled>
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 rotate-90" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
                     </svg>
@@ -64,185 +45,7 @@
             </div>
         </footer>
     </div>
-
-    <script type="module">
-        import { marked } from 'https://cdn.jsdelivr.net/npm/marked/lib/marked.esm.js';
-
-        // --- CONFIGURACIÓN ---
-        const CONFIG = {
-            VERSION: "1.1",
-            NOMBRE_EMPRESA: "San José y El Redentor",
-            COLOR_PRIMARIO: "#000000",
-            ICONO_HEADER: "FC",
-            FAVICON_EMOJI: "🐔",
-            LOGO_URL: "https://sjr.edu.pe/wp-content/uploads/2019/11/logo-insignia-sjr.png",
-            SALUDO_INICIAL: "¡Hola! Bienvenido al colegio San José y El Redentor. ¿En qué puedo ayudarte hoy?",
-            PLACEHOLDER_INPUT: "Escribe tu consulta...",
-            
-            // API Config
-            URL_PROXY: "https://deepseek-chat-proxy.precios-com-pe.workers.dev",
-            MODELO: "deepseek-chat",
-            TEMPERATURA: 0.2,
-            MAX_HISTORIAL_MESSAGES: 6, // Cantidad de mensajes previos a recordar
-        };
-
-        // Variables de Estado
-        let systemInstruction = "";
-        let chatHistory = []; // { role: 'user'|'assistant', content: string }
-        
-        // Elementos DOM
-        const userInput = document.getElementById('userInput'), 
-              sendBtn = document.getElementById('sendBtn'), 
-              chatContainer = document.getElementById('chat-container');
-
-        // Inicialización Visual Inmediata
-        document.title = CONFIG.NOMBRE_EMPRESA;
-        const link = document.createElement('link');
-        link.rel = 'icon';
-        link.href = `data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>${CONFIG.FAVICON_EMOJI}</text></svg>`;
-        document.head.appendChild(link);
-
-        window.onload = () => {
-            aplicarConfiguracionGlobal();
-            cargarIA();
-        };
-
-        function aplicarConfiguracionGlobal() {
-            document.documentElement.style.setProperty('--chat-color', CONFIG.COLOR_PRIMARIO);
-            
-            const headerTitle = document.getElementById('header-title');
-            if (headerTitle) headerTitle.innerText = CONFIG.NOMBRE_EMPRESA;
-
-            const headerIcon = document.getElementById('header-icon-initials');
-            if (CONFIG.LOGO_URL && headerIcon) {
-                headerIcon.innerHTML = `<img src="${CONFIG.LOGO_URL}" class="w-full h-full object-cover">`;
-            } else if (headerIcon) {
-                headerIcon.innerText = CONFIG.ICONO_HEADER;
-            }
-
-            userInput.placeholder = CONFIG.PLACEHOLDER_INPUT;
-        }
-
-        async function cargarIA() {
-            try {
-                // Carga el archivo prompt.txt que contiene el contexto base
-                const res = await fetch(`./prompt.txt?v=${CONFIG.VERSION}`);
-                systemInstruction = res.ok ? await res.text() : "Eres un asistente útil.";
-                document.getElementById('bot-welcome-text').innerText = CONFIG.SALUDO_INICIAL;
-                toggleInput(true);
-            } catch (e) { 
-                console.error("Error al cargar prompt.txt", e);
-                systemInstruction = "Error cargando contexto.";
-                toggleInput(true);
-            }
-        }
-
-        async function enviarMensaje() {
-            const text = userInput.value.trim();
-            if (!text) return;
-
-            // 1. Mostrar mensaje usuario
-            agregarBurbuja(text, 'user');
-            userInput.value = "";
-            toggleInput(false); // Bloquear input mientras piensa
-            scrollToBottom();
-
-            // 2. Mostrar "Escribiendo..."
-            const loadId = mostrarLoading();
-            scrollToBottom();
-
-            try {
-                // 3. Llamar a la API Real
-                const respuestaBot = await consultarAPI(text);
-                
-                eliminarLoading(loadId);
-                agregarBurbuja(marked.parse(respuestaBot), 'bot');
-                
-                // Guardar en historial
-                chatHistory.push({ role: "user", content: text });
-                chatHistory.push({ role: "assistant", content: respuestaBot });
-                
-                // Limitar historial para no exceder tokens
-                if (chatHistory.length > CONFIG.MAX_HISTORIAL_MESSAGES * 2) {
-                    chatHistory = chatHistory.slice(-(CONFIG.MAX_HISTORIAL_MESSAGES * 2));
-                }
-
-            } catch (error) {
-                console.error(error);
-                eliminarLoading(loadId);
-                agregarBurbuja("Lo siento, tuve un error de conexión. Intenta de nuevo.", 'bot');
-            } finally {
-                toggleInput(true);
-                userInput.focus();
-                scrollToBottom();
-            }
-        }
-
-        async function consultarAPI(mensajeUsuario) {
-            // Construir el payload con System Prompt + Historial Reciente + Mensaje Actual
-            const messages = [
-                { role: "system", content: systemInstruction },
-                ...chatHistory,
-                { role: "user", content: mensajeUsuario }
-            ];
-
-            const response = await fetch(CONFIG.URL_PROXY, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                    model: CONFIG.MODELO,
-                    messages: messages,
-                    temperature: CONFIG.TEMPERATURA
-                })
-            });
-
-            if (!response.ok) throw new Error("Error API: " + response.status);
-            
-            const data = await response.json();
-            // Ajustar según la estructura de respuesta de tu proxy/API (asumiendo estructura OpenAI standard)
-            return data.choices?.[0]?.message?.content || data.response || "No recibí respuesta.";
-        }
-
-        // --- UI UTILS ---
-        function agregarBurbuja(html, tipo) {
-            const div = document.createElement('div');
-            div.className = tipo === 'user' 
-                ? "p-3 max-w-[85%] text-sm text-white rounded-2xl rounded-tr-none self-end ml-auto shadow-md break-words" 
-                : "p-3 max-w-[85%] text-sm bg-white border border-gray-200 rounded-2xl rounded-tl-none self-start bot-bubble shadow-sm break-words";
-            
-            if (tipo === 'user') { 
-                div.style.backgroundColor = 'var(--chat-color)'; 
-                div.textContent = html; 
-            } else { 
-                div.innerHTML = html; 
-            }
-            chatContainer.appendChild(div);
-        }
-
-        function mostrarLoading() {
-            const id = 'load-' + Date.now(), div = document.createElement('div');
-            div.id = id; 
-            div.className = "p-3 max-w-[85%] bg-white border border-gray-200 rounded-2xl rounded-tl-none self-start flex gap-1 shadow-sm";
-            div.innerHTML = `<div class="typing-dot"></div><div class="typing-dot" style="animation-delay: 0.2s"></div><div class="typing-dot" style="animation-delay: 0.4s"></div>`;
-            chatContainer.appendChild(div);
-            return id;
-        }
-
-        function eliminarLoading(id) { const el = document.getElementById(id); if (el) el.remove(); }
-        
-        function toggleInput(habilitar) { 
-            userInput.disabled = !habilitar; 
-            sendBtn.disabled = !habilitar;
-            if(habilitar) setTimeout(() => userInput.focus(), 100);
-        }
-
-        function scrollToBottom() {
-            chatContainer.scrollTo({ top: chatContainer.scrollHeight, behavior: 'smooth' });
-        }
-
-        // Event Listeners
-        sendBtn.onclick = enviarMensaje;
-        userInput.onkeypress = (e) => { if (e.key === 'Enter') enviarMensaje(); };
-    </script>
+    
+    <script type="module" src="./main.js?v=1"></script>
 </body>
 </html>
