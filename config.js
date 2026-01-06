@@ -17,7 +17,7 @@ export const CONFIG = {
     welcome: "¡Hola! Bienvenido al colegio San José y El Redentor. ¿En qué puedo ayudarte?",
     placeholder: "Escribe tu consulta...",
     maxInput: 150,
-    maxMessages: 1,
-    limitMinutes: 1
+    maxMessages: 10,
+    limitMinutes: 5
   }
 };
