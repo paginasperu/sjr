@@ -1,4 +1,4 @@
-export const CONFIG = { 
+export const CONFIG = {
   VERSION: "1",
 
   TITULO: "Colegio San José y El Redentor",
