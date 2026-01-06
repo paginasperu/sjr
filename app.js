@@ -108,7 +108,7 @@ window.send = async () => {
   if (history.length > CONFIG.ai.historyLimit * 2) history.shift();
 
   const typing = document.createElement('div');
-  typing.className = "bubble bot";
+  typing.className = "bubble bot typing";
   typing.innerHTML = `
     <div class="typing-dot"></div>
     <div class="typing-dot" style="animation-delay:.2s"></div>
