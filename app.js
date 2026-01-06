@@ -1,5 +1,4 @@
 import { CONFIG } from './config.js';
-import { marked } from 'https://cdn.jsdelivr.net/npm/marked/lib/marked.esm.js';
 
 // 1. UI SETUP (Configuración de Identidad)
 const $ = (id) => document.getElementById(id);
