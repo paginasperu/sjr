@@ -1,8 +1,8 @@
-import { CONFIG } from './config.js'; 
+import { CONFIG } from './config.js';
 
 const $ = (id) => document.getElementById(id);
 const chat = $('chat-container'), input = $('userInput'), btn = $('sendBtn'), limit = $('feedback-limit-text');
-let prompt = "", history = [], count = parseInt(localStorage.getItem('chat_count')) || 0;
+let promptText = "", history = [], count = parseInt(localStorage.getItem('chat_count')) || 0;
 const link = `https://wa.me/${CONFIG.brand.whatsapp}`;
 
 const toggle = (s) => { input.disabled = btn.disabled = !s; if(s) input.focus(); };
@@ -29,7 +29,7 @@ async function call(retry = 0) {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-                messages: [{ role: "system", content: prompt }, ...history],
+                messages: [{ role: "system", content: promptText }, ...history],
                 model: CONFIG.ai.model, 
                 temperature: CONFIG.ai.temp, 
                 max_tokens: CONFIG.ai.maxTokens
@@ -84,17 +84,17 @@ window.send = async () => {
 };
 
 (async () => {
-    document.title = CONFIG.brand.name;
-    document.documentElement.style.setProperty('--chat-color', CONFIG.brand.color);
-    $('header-title').innerText = CONFIG.brand.name;
-    $('bot-welcome-text').innerText = CONFIG.chat.welcome;
-    input.placeholder = CONFIG.chat.placeholder;
-    input.maxLength = CONFIG.chat.maxInput;
-    $('favicon').href = CONFIG.brand.logo;
-    $('header-icon').innerHTML = `<img src="${CONFIG.brand.logo}">`;
     try {
+        document.title = CONFIG.brand.name;
+        document.documentElement.style.setProperty('--chat-color', CONFIG.brand.color);
+        $('header-title').innerText = CONFIG.brand.name;
+        $('bot-welcome-text').innerText = CONFIG.chat.welcome;
+        input.placeholder = CONFIG.chat.placeholder;
+        input.maxLength = CONFIG.chat.maxInput;
+        $('favicon').href = CONFIG.brand.logo;
+        $('header-icon').innerHTML = `<img src="${CONFIG.brand.logo}">`;
         const r = await fetch(`./prompt.txt?v=${CONFIG.version}`);
-        if (r.ok) prompt = await r.text();
+        if (r.ok) promptText = await r.text();
     } catch (e) {}
     document.body.classList.add('ready');
     update();
