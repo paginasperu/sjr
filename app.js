@@ -138,5 +138,10 @@ window.send = async () => {
   input.focus();
 
   btn.onclick = window.send;
-  input.onkeydown = (e) => e.key === 'Enter' && window.send();
+  input.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') {
+    e.preventDefault();
+    window.send();
+  }
+});
 })();
