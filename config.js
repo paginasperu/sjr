@@ -1,5 +1,5 @@
 export const CONFIG = {
-  version: "1.1.4",
+  version: "1.1.5",
   brand: {
     name: "Colegio San José y El Redentor",
     whatsapp: "51949973277",
@@ -17,6 +17,7 @@ export const CONFIG = {
     welcome: "¡Hola! Bienvenido al colegio San José y El Redentor. ¿En qué puedo ayudarte?",
     placeholder: "Escribe tu consulta...",
     maxInput: 150,
-    maxMessages: 1
+    maxMessages: 10,
+    limitMinutes: 60
   }
 };
