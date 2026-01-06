@@ -1,5 +1,5 @@
 export const CONFIG = {
-  version: "1.1.5",
+  version: "1",
   brand: {
     name: "Colegio San José y El Redentor",
     whatsapp: "51949973277",
