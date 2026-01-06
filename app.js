@@ -1,144 +1,124 @@
 import { CONFIG } from './config.js';
 import { marked } from 'https://cdn.jsdelivr.net/npm/marked/lib/marked.esm.js';
 
-// 1. INICIALIZACIÓN DE INTERFAZ
+// 1. UI SETUP (Configuración de Identidad)
+const $ = (id) => document.getElementById(id);
+const chatContainer = $('chat-container'), userInput = $('userInput'), sendBtn = $('sendBtn'), limitText = $('feedback-limit-text');
+
 document.title = CONFIG.TITULO;
 document.documentElement.style.setProperty('--chat-color', CONFIG.COLOR);
-document.getElementById('header-title').innerText = CONFIG.TITULO;
-document.getElementById('bot-welcome-text').innerText = CONFIG.SALUDO_INICIAL;
+$('header-title').innerText = CONFIG.TITULO;
+$('bot-welcome-text').innerText = CONFIG.SALUDO_INICIAL;
+userInput.placeholder = CONFIG.PLACEHOLDER_INPUT;
 
-const headerIcon = document.getElementById('header-icon');
-if (CONFIG.LOGO) {
-    headerIcon.innerHTML = `<img src="${CONFIG.LOGO}">`;
-} else {
-    headerIcon.innerText = CONFIG.TITULO.charAt(0);
-}
+const icon = $('header-icon');
+CONFIG.LOGO ? icon.innerHTML = `<img src="${CONFIG.LOGO}">` : icon.innerText = CONFIG.TITULO[0];
 
 document.body.classList.add('ready');
 
-// 2. ESTADO Y ELEMENTOS (PERSISTENCIA CON LOCALSTORAGE)
-let systemInstruction = "";
-let messageHistory = [];
+// 2. STATE & PERSISTENCE
+let systemInstruction = "", messageHistory = [];
 let messageCount = parseInt(localStorage.getItem('chat_count')) || 0;
+const WA_LINK = `https://wa.me/${CONFIG.WHATSAPP}`;
 
-const userInput = document.getElementById('userInput'),
-      sendBtn = document.getElementById('sendBtn'),
-      chatContainer = document.getElementById('chat-container'),
-      feedbackLimitText = document.getElementById('feedback-limit-text'),
-      WA_LINK = `https://wa.me/${CONFIG.WHATSAPP}`;
-
-// 3. CARGA DE CONFIGURACIÓN
+// 3. INIT
 window.onload = async () => {
     try {
         const res = await fetch(`./prompt.txt?v=${CONFIG.VERSION}`);
         systemInstruction = res.ok ? await res.text() : "";
-        actualizarContador();
-        toggleInput(true);
+        updateUI();
     } catch (e) { console.error(e); }
 };
 
-// 4. FUNCIONES PRINCIPALES
+// 4. CORE LOGIC
 window.enviarMensaje = async () => {
     const text = userInput.value.trim();
     if (!text || userInput.disabled) return;
 
-    // Validación de límite persistente
     if (CONFIG.LIMITE_ACTIVO && messageCount >= CONFIG.MAX_DEMO_MESSAGES) {
-        agregarBurbuja(`Límite alcanzado. Contáctanos por <a href="${WA_LINK}">WhatsApp</a>.`, 'bot');
-        userInput.value = "";
-        return;
+        addBubble(`Límite alcanzado. Contáctanos por <a href="${WA_LINK}">WhatsApp</a>.`, 'bot');
+        return userInput.value = "";
     }
 
-    agregarBurbuja(text, 'user');
+    addBubble(text, 'user');
     userInput.value = "";
-    
-    // Guardar progreso
-    messageCount++;
-    localStorage.setItem('chat_count', messageCount);
-    actualizarContador();
+    localStorage.setItem('chat_count', ++messageCount);
+    updateUI();
     
     messageHistory.push({ role: "user", content: text });
-    if (messageHistory.length > CONFIG.MAX_HISTORIAL_MESSAGES * 2) {
-        messageHistory = messageHistory.slice(-(CONFIG.MAX_HISTORIAL_MESSAGES * 2));
-    }
+    if (messageHistory.length > CONFIG.MAX_HISTORIAL_MESSAGES * 2) messageHistory.shift();
 
-    const loadId = mostrarLoading();
-    toggleInput(false);
+    const loadId = showLoading();
+    toggle(false);
 
     try {
-        const respuesta = await llamarAPI();
-        eliminarLoading(loadId);
-        if (respuesta) {
-            agregarBurbuja(marked.parse(respuesta), 'bot');
-            messageHistory.push({ role: "assistant", content: respuesta });
+        const res = await callAPI();
+        $(loadId)?.remove();
+        if (res) {
+            addBubble(marked.parse(res), 'bot');
+            messageHistory.push({ role: "assistant", content: res });
         }
-    } catch (error) {
-        eliminarLoading(loadId);
-        agregarBurbuja(`Error de conexión. <a href="${WA_LINK}">Escríbenos aquí</a>.`, 'bot');
+    } catch (e) {
+        $(loadId)?.remove();
+        addBubble(`Error de conexión. <a href="${WA_LINK}">Escríbenos</a>.`, 'bot');
     } finally {
-        toggleInput(true);
-        scrollToBottom();
+        toggle(true);
     }
 };
 
-async function llamarAPI(intentos = 0) {
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), CONFIG.TIMEOUT_MS);
+async function callAPI(retry = 0) {
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), CONFIG.TIMEOUT_MS);
 
     try {
-        const res = await fetch(CONFIG.URL_PROXY, {
+        const r = await fetch(CONFIG.URL_PROXY, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
                 messages: [{ role: "system", content: systemInstruction }, ...messageHistory],
-                model: CONFIG.MODELO,
-                temperature: CONFIG.TEMPERATURA,
-                max_tokens: CONFIG.MAX_TOKENS_RESPONSE,
-                top_p: CONFIG.TOP_P
+                model: CONFIG.MODELO, temperature: CONFIG.TEMPERATURA, max_tokens: CONFIG.MAX_TOKENS_RESPONSE, top_p: CONFIG.TOP_P
             }),
-            signal: controller.signal
+            signal: ctrl.signal
         });
-        clearTimeout(timeout);
-        const data = await res.json();
-        return data.choices?.[0]?.message?.content;
+        clearTimeout(timer);
+        const d = await r.json();
+        return d.choices?.[0]?.message?.content;
     } catch (e) {
-        if (intentos < CONFIG.RETRY_LIMIT) return llamarAPI(intentos + 1);
+        if (retry < CONFIG.RETRY_LIMIT) return callAPI(retry + 1);
         throw e;
     }
 }
 
-// 5. UTILIDADES
-function agregarBurbuja(html, tipo) {
+// 5. HELPERS (UI)
+function addBubble(html, type) {
     const div = document.createElement('div');
-    div.className = `bubble ${tipo} ${tipo === 'bot' ? 'bot-content' : ''}`;
+    div.className = `bubble ${type} ${type === 'bot' ? 'bot-content' : ''}`;
     div.innerHTML = html;
     chatContainer.appendChild(div);
-    scrollToBottom();
+    chatContainer.scrollTop = chatContainer.scrollHeight;
 }
 
-function mostrarLoading() {
-    const id = 'load-' + Date.now(), div = document.createElement('div');
-    div.id = id; div.className = "bubble bot";
-    div.style.display = "flex"; div.style.gap = "4px";
+function showLoading() {
+    const id = 'l-' + Date.now(), div = document.createElement('div');
+    div.id = id; div.className = "bubble bot"; div.style.display = "flex"; div.style.gap = "4px";
     div.innerHTML = `<div class="typing-dot"></div><div class="typing-dot" style="animation-delay:0.2s"></div><div class="typing-dot" style="animation-delay:0.4s"></div>`;
     chatContainer.appendChild(div);
-    scrollToBottom();
+    chatContainer.scrollTop = chatContainer.scrollHeight;
     return id;
 }
 
-function eliminarLoading(id) { document.getElementById(id)?.remove(); }
-function scrollToBottom() { chatContainer.scrollTop = chatContainer.scrollHeight; }
-function toggleInput(s) { userInput.disabled = !s; sendBtn.disabled = !s; if(s) userInput.focus(); }
+function toggle(s) { 
+    userInput.disabled = !s; 
+    sendBtn.disabled = !s; 
+    if(s) userInput.focus(); 
+}
 
-function actualizarContador() {
-    if (!CONFIG.LIMITE_ACTIVO) {
-        feedbackLimitText.style.display = 'none';
-        return;
-    }
+function updateUI() {
+    if (!CONFIG.LIMITE_ACTIVO) return limitText.style.display = 'none';
     const r = CONFIG.MAX_DEMO_MESSAGES - messageCount;
-    feedbackLimitText.innerText = r > 0 ? `MENSAJES: ${r}` : "LÍMITE ALCANZADO";
-    feedbackLimitText.style.color = r > 0 ? 'var(--chat-color)' : '#ef4444';
+    limitText.innerText = r > 0 ? `MENSAJES: ${r}` : "LÍMITE ALCANZADO";
+    limitText.style.color = r > 0 ? 'var(--chat-color)' : '#ef4444';
 }
 
 sendBtn.onclick = window.enviarMensaje;
-userInput.onkeypress = (e) => { if (e.key === 'Enter') window.enviarMensaje(); };
+userInput.onkeypress = (e) => e.key === 'Enter' && window.enviarMensaje();
