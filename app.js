@@ -1,4 +1,4 @@
-import { CONFIG } from './config.js';
+import { CONFIG } from './config.js?v=1';
 
 const $ = (id) => document.getElementById(id);
 const chat = $('chat-container');
