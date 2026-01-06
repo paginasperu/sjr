@@ -1,4 +1,4 @@
-import { CONFIG } from './config.js';
+import { CONFIG } from './config.js'; 
 
 const $ = (id) => document.getElementById(id);
 const chat = $('chat-container'), input = $('userInput'), btn = $('sendBtn'), limit = $('feedback-limit-text');
