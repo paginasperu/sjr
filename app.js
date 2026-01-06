@@ -6,9 +6,21 @@ const input = $('userInput');
 const btn = $('sendBtn');
 const limitText = $('feedback-limit-text');
 
-/* =========================
-   LÍMITE POR TIEMPO
-========================= */
+(() => {
+  try {
+    const storedVersion = localStorage.getItem('chat_policy_version');
+
+    if (storedVersion !== CONFIG.version) {
+      // Política cambió → reset inmediato
+      localStorage.removeItem('chat_count');
+      localStorage.removeItem('chat_start');
+      localStorage.setItem('chat_policy_version', CONFIG.version);
+    }
+  } catch (e) {
+    console.warn('Policy version check skipped:', e);
+  }
+})();
+
 const LIMIT_TIME = CONFIG.chat.limitMinutes * 60 * 1000;
 const now = Date.now();
 
@@ -21,8 +33,6 @@ if (now - startTime > LIMIT_TIME) {
   localStorage.setItem('chat_count', 0);
   localStorage.setItem('chat_start', startTime);
 }
-
-/* ========================= */
 
 let promptText = "";
 let history = [];
@@ -77,7 +87,6 @@ window.send = async () => {
   const text = input.value.trim();
   if (!text) return;
 
-  // ⛔ Límite alcanzado
   if (count >= CONFIG.chat.maxMessages) {
     bubble(
       `Límite alcanzado. <a href="${link}" target="_blank">Contacto</a>.`,
@@ -98,14 +107,14 @@ window.send = async () => {
   history.push({ role: "user", content: text });
   if (history.length > CONFIG.ai.historyLimit * 2) history.shift();
 
-   const typing = document.createElement('div');
-   typing.className = "bubble bot";
-   typing.innerHTML = `
-   <div class="typing-dot"></div>
-   <div class="typing-dot" style="animation-delay:.2s"></div>
-   <div class="typing-dot" style="animation-delay:.4s"></div>
-   `;
-   chat.appendChild(typing);
+  const typing = document.createElement('div');
+  typing.className = "bubble bot";
+  typing.innerHTML = `
+    <div class="typing-dot"></div>
+    <div class="typing-dot" style="animation-delay:.2s"></div>
+    <div class="typing-dot" style="animation-delay:.4s"></div>
+  `;
+  chat.appendChild(typing);
 
   toggle(false);
 
@@ -118,7 +127,6 @@ window.send = async () => {
     }
   } catch {
     typing.remove();
-    // ❌ NO mostrar error si el límite ya se alcanzó
     if (count < CONFIG.chat.maxMessages) {
       bubble(
         `Error. <a href="${link}" target="_blank">Contacto</a>.`,
@@ -130,9 +138,6 @@ window.send = async () => {
   }
 };
 
-/* =========================
-   INIT
-========================= */
 (async () => {
   document.title = CONFIG.brand.name;
   document.documentElement.style.setProperty('--chat-color', CONFIG.brand.color);
