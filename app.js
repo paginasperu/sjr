@@ -1,141 +1,104 @@
 import { CONFIG } from './config.js';
 
 const $ = (id) => document.getElementById(id);
-const chatContainer = $('chat-container'), 
-      userInput = $('userInput'), 
-      sendBtn = $('sendBtn'), 
-      limitText = $('feedback-limit-text');
+const chat = $('chat-container'), input = $('userInput'), btn = $('sendBtn'), limit = $('feedback-limit-text');
+let prompt = "", history = [], count = parseInt(localStorage.getItem('chat_count')) || 0;
+const link = `https://wa.me/${CONFIG.brand.whatsapp}`;
 
-// 1. INICIALIZACIÓN DE INTERFAZ
-document.title = CONFIG.TITULO;
-document.documentElement.style.setProperty('--chat-color', CONFIG.COLOR);
-$('header-title').innerText = CONFIG.TITULO;
-$('bot-welcome-text').innerText = CONFIG.SALUDO_INICIAL;
-userInput.placeholder = CONFIG.PLACEHOLDER_INPUT;
+const toggle = (s) => { input.disabled = btn.disabled = !s; if(s) input.focus(); };
 
-if (CONFIG.FAVICON || CONFIG.LOGO) {
-    const fav = $('favicon');
-    if (fav) fav.href = CONFIG.FAVICON || CONFIG.LOGO;
-}
-
-const icon = $('header-icon');
-CONFIG.LOGO ? icon.innerHTML = `<img src="${CONFIG.LOGO}">` : icon.innerText = CONFIG.TITULO[0];
-
-document.body.classList.add('ready');
-
-// 2. ESTADO
-let systemInstruction = "";
-let messageHistory = [];
-let messageCount = parseInt(localStorage.getItem('chat_count')) || 0;
-const WA_LINK = `https://wa.me/${CONFIG.WHATSAPP}`;
-
-// 3. CARGA INICIAL
-window.onload = async () => {
-    toggle(false); // Bloqueamos al inicio para cargar el prompt
-    try {
-        const res = await fetch(`./prompt.txt?v=${CONFIG.VERSION}`);
-        systemInstruction = res.ok ? await res.text() : "Eres un asistente del Colegio SJR.";
-    } catch (e) {
-        console.error("Error cargando prompt:", e);
-    }
-    updateUI();
-    toggle(true); // ACTIVAMOS LA BARRA (Esto era lo que faltaba)
+const bubble = (html, type, bot = false) => {
+    const div = document.createElement('div');
+    div.className = `bubble ${type} ${bot ? 'bot-content' : ''}`;
+    div.innerHTML = html;
+    chat.appendChild(div);
+    chat.scrollTop = chat.scrollHeight;
 };
 
-// 4. ENVIAR MENSAJE
-window.enviarMensaje = async () => {
-    const text = userInput.value.trim();
-    if (!text || userInput.disabled) return;
-
-    if (CONFIG.LIMITE_ACTIVO && messageCount >= CONFIG.MAX_DEMO_MESSAGES) {
-        addBubble(`Límite alcanzado. Contáctanos por <a href="${WA_LINK}" target="_blank">WhatsApp</a>.`, 'bot');
-        userInput.value = "";
-        toggle(false);
-        return;
-    }
-
-    addBubble(text, 'user');
-    userInput.value = "";
-    messageCount++;
-    localStorage.setItem('chat_count', messageCount);
-    updateUI();
-    
-    messageHistory.push({ role: "user", content: text });
-    if (messageHistory.length > CONFIG.MAX_HISTORIAL_MESSAGES * 2) messageHistory.shift();
-
-    const loadId = showLoading();
-    toggle(false);
-
-    try {
-        const res = await callAPI();
-        $(loadId).remove();
-        if (res) {
-            const htmlRes = marked.parse(res);
-            addBubble(htmlRes, 'bot', true);
-            messageHistory.push({ role: "assistant", content: res });
-        }
-    } catch (e) {
-        if ($(loadId)) $(loadId).remove();
-        addBubble("Error de conexión. Inténtalo más tarde.", "bot");
-    } finally {
-        if (!CONFIG.LIMITE_ACTIVO || messageCount < CONFIG.MAX_DEMO_MESSAGES) {
-            toggle(true);
-        }
-    }
+const update = () => {
+    const r = CONFIG.chat.maxMessages - count;
+    limit.innerText = r > 0 ? `MENSAJES RESTANTES: ${r}` : "LÍMITE ALCANZADO";
+    limit.style.color = r > 0 ? 'var(--chat-color)' : '#ef4444';
 };
 
-async function callAPI(retry = 0) {
+async function call(retry = 0) {
     const ctrl = new AbortController();
-    const timer = setTimeout(() => ctrl.abort(), CONFIG.TIMEOUT_MS);
+    const timer = setTimeout(() => ctrl.abort(), 15000);
     try {
-        const r = await fetch(CONFIG.URL_PROXY, {
+        const r = await fetch(CONFIG.ai.proxy, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-                messages: [{ role: "system", content: systemInstruction }, ...messageHistory],
-                model: CONFIG.MODELO, 
-                temperature: CONFIG.TEMPERATURA, 
-                max_tokens: CONFIG.MAX_TOKENS_RESPONSE
+                messages: [{ role: "system", content: prompt }, ...history],
+                model: CONFIG.ai.model, 
+                temperature: CONFIG.ai.temp, 
+                max_tokens: CONFIG.ai.maxTokens
             }),
             signal: ctrl.signal
         });
         clearTimeout(timer);
+        if (!r.ok) throw 0;
         const d = await r.json();
         return d.choices?.[0]?.message?.content;
     } catch (e) {
-        if (retry < CONFIG.RETRY_LIMIT) return callAPI(retry + 1);
-        throw e;
+        if (retry < 1) {
+            await new Promise(r => setTimeout(r, 1000));
+            return call(retry + 1);
+        }
+        throw 0;
     }
 }
 
-function addBubble(html, type, isBot = false) {
-    const div = document.createElement('div');
-    div.className = `bubble ${type} ${isBot ? 'bot-content' : ''}`;
-    div.innerHTML = html;
-    chatContainer.appendChild(div);
-    chatContainer.scrollTop = chatContainer.scrollHeight;
-}
+window.send = async () => {
+    const text = input.value.trim();
+    if (!text || input.disabled) return;
+    if (count >= CONFIG.chat.maxMessages) {
+        bubble(`Límite alcanzado. <a href="${link}" target="_blank">Contacto</a>.`, 'bot');
+        return toggle(false);
+    }
+    bubble(text, 'user');
+    input.value = "";
+    count++;
+    localStorage.setItem('chat_count', count);
+    update();
+    history.push({ role: "user", content: text });
+    if (history.length > CONFIG.ai.historyLimit * 2) history.shift();
+    const l = document.createElement('div');
+    l.className = "bubble bot";
+    l.innerHTML = '<div class="typing-dot"></div><div class="typing-dot" style="animation-delay:.2s"></div><div class="typing-dot" style="animation-delay:.4s"></div>';
+    chat.appendChild(l);
+    toggle(false);
+    try {
+        const res = await call();
+        l.remove();
+        if (res) {
+            bubble(typeof marked !== 'undefined' ? marked.parse(res) : res, 'bot', true);
+            history.push({ role: "assistant", content: res });
+        }
+    } catch (e) {
+        l.remove();
+        bubble(`Error. <a href="${link}" target="_blank">Contacto</a>.`, 'bot');
+    } finally {
+        if (count < CONFIG.chat.maxMessages) toggle(true);
+    }
+};
 
-function showLoading() {
-    const id = 'l-' + Date.now(), div = document.createElement('div');
-    div.id = id; div.className = "bubble bot"; div.style.display = "flex"; div.style.gap = "4px";
-    div.innerHTML = `<div class="typing-dot"></div><div class="typing-dot" style="animation-delay:0.2s"></div><div class="typing-dot" style="animation-delay:0.4s"></div>`;
-    chatContainer.appendChild(div);
-    chatContainer.scrollTop = chatContainer.scrollHeight;
-    return id;
-}
-
-function toggle(s) { 
-    userInput.disabled = !s; 
-    sendBtn.disabled = !s; 
-    if(s) userInput.focus(); 
-}
-
-function updateUI() {
-    if (!CONFIG.LIMITE_ACTIVO) return limitText.style.display = 'none';
-    const r = CONFIG.MAX_DEMO_MESSAGES - messageCount;
-    limitText.innerText = r > 0 ? `MENSAJES RESTANTES: ${r}` : "LÍMITE ALCANZADO";
-}
-
-sendBtn.onclick = window.enviarMensaje;
-userInput.onkeydown = (e) => { if (e.key === 'Enter') window.enviarMensaje(); };
+(async () => {
+    document.title = CONFIG.brand.name;
+    document.documentElement.style.setProperty('--chat-color', CONFIG.brand.color);
+    $('header-title').innerText = CONFIG.brand.name;
+    $('bot-welcome-text').innerText = CONFIG.chat.welcome;
+    input.placeholder = CONFIG.chat.placeholder;
+    input.maxLength = CONFIG.chat.maxInput;
+    $('favicon').href = CONFIG.brand.logo;
+    $('header-icon').innerHTML = `<img src="${CONFIG.brand.logo}">`;
+    try {
+        const r = await fetch(`./prompt.txt?v=${CONFIG.version}`);
+        if (r.ok) prompt = await r.text();
+    } catch (e) {}
+    document.body.classList.add('ready');
+    update();
+    toggle(true);
+    btn.onclick = window.send;
+    input.onkeydown = (e) => e.key === 'Enter' && window.send();
+})();
