@@ -1,7 +1,10 @@
 import { CONFIG } from './config.js';
 
 const $ = (id) => document.getElementById(id);
-const chatContainer = $('chat-container'), userInput = $('userInput'), sendBtn = $('sendBtn'), limitText = $('feedback-limit-text');
+const chatContainer = $('chat-container'), 
+      userInput = $('userInput'), 
+      sendBtn = $('sendBtn'), 
+      limitText = $('feedback-limit-text');
 
 // 1. INICIALIZACIÓN DE INTERFAZ
 document.title = CONFIG.TITULO;
@@ -10,7 +13,6 @@ $('header-title').innerText = CONFIG.TITULO;
 $('bot-welcome-text').innerText = CONFIG.SALUDO_INICIAL;
 userInput.placeholder = CONFIG.PLACEHOLDER_INPUT;
 
-// Favicon Dinámico
 if (CONFIG.FAVICON || CONFIG.LOGO) {
     const fav = $('favicon');
     if (fav) fav.href = CONFIG.FAVICON || CONFIG.LOGO;
@@ -21,38 +23,41 @@ CONFIG.LOGO ? icon.innerHTML = `<img src="${CONFIG.LOGO}">` : icon.innerText = C
 
 document.body.classList.add('ready');
 
-// 2. ESTADO Y PERSISTENCIA
-let systemInstruction = "", messageHistory = [];
+// 2. ESTADO
+let systemInstruction = "";
+let messageHistory = [];
 let messageCount = parseInt(localStorage.getItem('chat_count')) || 0;
 const WA_LINK = `https://wa.me/${CONFIG.WHATSAPP}`;
 
-// 3. CARGA INICIAL (CON SOLUCIÓN FINALLY)
+// 3. CARGA INICIAL
 window.onload = async () => {
-    toggle(false); 
+    toggle(false); // Bloqueamos al inicio para cargar el prompt
     try {
         const res = await fetch(`./prompt.txt?v=${CONFIG.VERSION}`);
-        systemInstruction = res.ok ? await res.text() : "";
-        updateUI();
+        systemInstruction = res.ok ? await res.text() : "Eres un asistente del Colegio SJR.";
     } catch (e) {
-        console.error("Error al cargar configuración inicial:", e);
-    } finally {
-        toggle(true); // Se desbloquea pase lo que pase
+        console.error("Error cargando prompt:", e);
     }
+    updateUI();
+    toggle(true); // ACTIVAMOS LA BARRA (Esto era lo que faltaba)
 };
 
-// 4. LÓGICA DE ENVÍO
+// 4. ENVIAR MENSAJE
 window.enviarMensaje = async () => {
     const text = userInput.value.trim();
     if (!text || userInput.disabled) return;
 
     if (CONFIG.LIMITE_ACTIVO && messageCount >= CONFIG.MAX_DEMO_MESSAGES) {
-        addBubble(`Has alcanzado el límite. Contáctanos por <a href="${WA_LINK}" style="color:inherit; font-weight:bold">WhatsApp</a>.`, 'bot');
-        return userInput.value = "";
+        addBubble(`Límite alcanzado. Contáctanos por <a href="${WA_LINK}" target="_blank">WhatsApp</a>.`, 'bot');
+        userInput.value = "";
+        toggle(false);
+        return;
     }
 
     addBubble(text, 'user');
     userInput.value = "";
-    localStorage.setItem('chat_count', ++messageCount);
+    messageCount++;
+    localStorage.setItem('chat_count', messageCount);
     updateUI();
     
     messageHistory.push({ role: "user", content: text });
@@ -63,17 +68,19 @@ window.enviarMensaje = async () => {
 
     try {
         const res = await callAPI();
-        $(loadId)?.remove();
+        $(loadId).remove();
         if (res) {
-            const htmlRes = typeof marked !== 'undefined' ? marked.parse(res) : res;
+            const htmlRes = marked.parse(res);
             addBubble(htmlRes, 'bot', true);
             messageHistory.push({ role: "assistant", content: res });
         }
     } catch (e) {
-        $(loadId)?.remove();
-        addBubble(`Error de conexión. <a href="${WA_LINK}" style="color:inherit; font-weight:bold">Escríbenos</a>.`, 'bot');
+        if ($(loadId)) $(loadId).remove();
+        addBubble("Error de conexión. Inténtalo más tarde.", "bot");
     } finally {
-        toggle(true);
+        if (!CONFIG.LIMITE_ACTIVO || messageCount < CONFIG.MAX_DEMO_MESSAGES) {
+            toggle(true);
+        }
     }
 };
 
@@ -86,8 +93,9 @@ async function callAPI(retry = 0) {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
                 messages: [{ role: "system", content: systemInstruction }, ...messageHistory],
-                model: CONFIG.MODELO, temperature: CONFIG.TEMPERATURA, max_tokens: CONFIG.MAX_TOKENS_RESPONSE,
-                top_p: CONFIG.TOP_P, frequency_penalty: CONFIG.FREQUENCY_PENALTY, presence_penalty: CONFIG.PRESENCE_PENALTY
+                model: CONFIG.MODELO, 
+                temperature: CONFIG.TEMPERATURA, 
+                max_tokens: CONFIG.MAX_TOKENS_RESPONSE
             }),
             signal: ctrl.signal
         });
@@ -100,7 +108,6 @@ async function callAPI(retry = 0) {
     }
 }
 
-// 5. HELPERS UI
 function addBubble(html, type, isBot = false) {
     const div = document.createElement('div');
     div.className = `bubble ${type} ${isBot ? 'bot-content' : ''}`;
@@ -127,9 +134,8 @@ function toggle(s) {
 function updateUI() {
     if (!CONFIG.LIMITE_ACTIVO) return limitText.style.display = 'none';
     const r = CONFIG.MAX_DEMO_MESSAGES - messageCount;
-    limitText.innerText = r > 0 ? `MENSAJES: ${r}` : "LÍMITE ALCANZADO";
-    limitText.style.color = r > 0 ? 'var(--chat-color)' : '#ef4444';
+    limitText.innerText = r > 0 ? `MENSAJES RESTANTES: ${r}` : "LÍMITE ALCANZADO";
 }
 
 sendBtn.onclick = window.enviarMensaje;
-userInput.onkeypress = (e) => e.key === 'Enter' && window.enviarMensaje();
+userInput.onkeydown = (e) => { if (e.key === 'Enter') window.enviarMensaje(); };
