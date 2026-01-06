@@ -14,7 +14,7 @@ export const CONFIG = {
     historyLimit: 3
   },
   chat: {
-    welcome: "¡Hola! Bienvenido al colegio San José y El Redentor. ¿En qué puedo ayudarte?",
+    welcome: "¡Hola, soy Jazmín! Bienvenido al colegio San José y El Redentor. ¿En qué puedo ayudarte?",
     placeholder: "Escribe tu consulta...",
     maxInput: 150,
     maxMessages: 3,
