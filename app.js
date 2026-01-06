@@ -98,10 +98,14 @@ window.send = async () => {
   history.push({ role: "user", content: text });
   if (history.length > CONFIG.ai.historyLimit * 2) history.shift();
 
-  const typing = document.createElement('div');
-  typing.className = "bubble bot";
-  typing.innerHTML = `<span>Escribiendo...</span>`;
-  chat.appendChild(typing);
+   const typing = document.createElement('div');
+   typing.className = "bubble bot";
+   typing.innerHTML = `
+   <div class="typing-dot"></div>
+   <div class="typing-dot" style="animation-delay:.2s"></div>
+   <div class="typing-dot" style="animation-delay:.4s"></div>
+   `;
+   chat.appendChild(typing);
 
   toggle(false);
 
@@ -109,7 +113,7 @@ window.send = async () => {
     const res = await callAI();
     typing.remove();
     if (res) {
-      bubble(res, 'bot');
+      bubble(typeof marked !== 'undefined' ? marked.parse(res) : res, 'bot');
       history.push({ role: "assistant", content: res });
     }
   } catch {
